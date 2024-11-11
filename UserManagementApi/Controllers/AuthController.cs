@@ -33,36 +33,42 @@ namespace UserManagementAPI.Controllers
         [Route("Register")]
         public async Task<IActionResult> Register([FromBody]RegisterUser registerUser, string role)
         {
-           var userExists = await _userManager.FindByEmailAsync(registerUser.Email);
-            if (userExists != null)
+            try
             {
-                return NotFound("Cannot create an account with this email. ");
-            }
-            if (!(await _roleManager.RoleExistsAsync(role)))
-            {
-                return BadRequest("Invalid parameters");
-            }
+                var userExists = await _userManager.FindByEmailAsync(registerUser.Email);
+                if (userExists != null)
+                {
+                    return NotFound("Cannot create an account with this email. ");
+                }
+                if (!(await _roleManager.RoleExistsAsync(role)))
+                {
+                    return BadRequest("Invalid role specified");
+                }
 
-            IdentityUser identityUser = new IdentityUser
-            {
-                Email = registerUser.Email,
-                SecurityStamp = System.Guid.NewGuid().ToString(),
-                UserName = registerUser.UserName
-                
-            };
-            var res = await _userManager.CreateAsync(identityUser, registerUser.Password);
-            if (res.Succeeded)
-            {
-                var roleRes = await _userManager.AddToRoleAsync(identityUser, role);
-                //var token = await _userManager.GenerateEmailConfirmationTokenAsync(identityUser);
-                //if (token != null)
-                //{
-                //    var confirmationLink = Url.Action(nameof(ConfirmEmail), "Auth", new {token, identityUser.Email});
-                //    var message = new Message(new string[] { identityUser.Email! }, "Confirmation email link", confirmationLink);
-                //    _emailService.SendEmail(message);
-                //}
-                return Created("", new { Message = "User created successfully", StatusCode = "201" });
+                IdentityUser identityUser = new IdentityUser
+                {
+                    Email = registerUser.Email,
+                    SecurityStamp = System.Guid.NewGuid().ToString(),
+                    UserName = registerUser.UserName
 
+                };
+                var res = await _userManager.CreateAsync(identityUser, registerUser.Password);
+                if (res.Succeeded)
+                {
+                    var roleRes = await _userManager.AddToRoleAsync(identityUser, role);
+                    //var token = await _userManager.GenerateEmailConfirmationTokenAsync(identityUser);
+                    //if (token != null)
+                    //{
+                    //    var confirmationLink = Url.Action(nameof(ConfirmEmail), "Auth", new {token, identityUser.Email});
+                    //    var message = new Message(new string[] { identityUser.Email! }, "Confirmation email link", confirmationLink);
+                    //    _emailService.SendEmail(message);
+                    //}
+                    return Created("", new { Message = "User created successfully", StatusCode = "00" });
+                }
+            }
+            catch (Exception)
+            {
+                throw;
             }
            
 
@@ -79,30 +85,36 @@ namespace UserManagementAPI.Controllers
         [Route("Login")]
         public async Task<IActionResult> Login([FromBody] UserLogin userLogin)
         {
-            //Check if user exists
-            var validUser = await _userManager.FindByNameAsync(userLogin.UserName);
-            if (validUser == null)
+            try
             {
-                return NotFound(new { StatusCode = "404", Message = "User not found" });
-
+                //Check if user exists
+                var validUser = await _userManager.FindByNameAsync(userLogin.UserName);
+                if (validUser == null)
+                {
+                    return NotFound(new { StatusCode = "404", Message = "User not found" });
+                }
+                var validPass = await _userManager.CheckPasswordAsync(validUser, userLogin.Password);
+                if (!validPass)
+                {
+                    return Unauthorized(new { StatusCode = "401", Message = "You have entered an invalid username or password" });
+                }
+                var claims = new List<Claim>()
+                {
+                    new Claim(ClaimTypes.Name, userLogin.UserName),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                };
+                var roles = await _userManager.GetRolesAsync(validUser);
+                foreach (var role in roles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+                var token = GetToken(claims);
+                return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token), Expiry = token.ValidTo });
             }
-            var validPass = await _userManager.CheckPasswordAsync(validUser, userLogin.Password);
-            if (!validPass)
+            catch (Exception)
             {
-                return Unauthorized(new { StatusCode = "401", Message = "You have entered an invalid username or password" });
+                throw;
             }
-            var claims = new List<Claim>()
-            {
-                new Claim(ClaimTypes.Name, userLogin.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
-            var roles = await _userManager.GetRolesAsync(validUser);
-            foreach (var role in roles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
-            var token = GetToken(claims);
-            return Ok(new {token = new JwtSecurityTokenHandler().WriteToken(token), Expiry = token.ValidTo});
         }
 
         private JwtSecurityToken GetToken(List<Claim> authClaims)

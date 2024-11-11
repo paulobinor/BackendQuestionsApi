@@ -65,7 +65,9 @@ public class CustomerController : ControllerBase
         }
         catch (Exception)
         {
-            throw;
+            return StatusCode(500, new {responsecode = "500", Responsedescription = "We encountered an error! please try again later or contact support"});
+
+          //  throw;
         }
     }
 
@@ -91,7 +93,8 @@ public class CustomerController : ControllerBase
         }
         catch (Exception)
         {
-            throw;
+            return StatusCode(500, new { responsecode = "500", Responsedescription = "We encountered an error! please try again later or contact support" });
+            //throw;
         }
     }
 }

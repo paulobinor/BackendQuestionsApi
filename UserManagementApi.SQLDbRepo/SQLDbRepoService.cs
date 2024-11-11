@@ -15,78 +15,95 @@ namespace UserManagementApi.SQLDbRepo
         public SQLDbRepoService(IConfiguration configuration)
         {
             _configuration = configuration;
+            _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
         }
 
         public async Task<Customer> Customer(int Id)
         {
-            _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
             Customer customer = null;
-
-            using (SqlConnection connection = new SqlConnection(_sqlConnString))
+            try
             {
-                using (SqlCommand command = new SqlCommand("GetSingleCustomer", connection))
+               // _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
+                
+
+                using (SqlConnection connection = new SqlConnection(_sqlConnString))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@CustomerId", Id);
-
-                    await connection.OpenAsync();
-
-                    using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                    using (SqlCommand command = new SqlCommand("GetSingleCustomer", connection))
                     {
-                        if (await reader.ReadAsync())
-                        {
-                            customer = new Customer
-                            {
-                                Id = Convert.ToInt32(reader["CustomerId"]),
-                                Name = Convert.ToString(reader["CustomerName"])
-                            };
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@CustomerId", Id);
 
-                            if (reader["OrderId"] != DBNull.Value)
+                        await connection.OpenAsync();
+
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
                             {
-                                Order order = new Order
+                                customer = new Customer
                                 {
-                                    Id = Convert.ToInt32(reader["OrderId"]),
-                                    ProductName = Convert.ToString(reader["ProductName"]),
-                                    Price = Convert.ToDecimal(reader["Price"])
+                                    Id = Convert.ToInt32(reader["CustomerId"]),
+                                    Name = Convert.ToString(reader["CustomerName"])
                                 };
 
-                                customer.Orders = new List<Order> { order };
+                                if (reader["OrderId"] != DBNull.Value)
+                                {
+                                    Order order = new Order
+                                    {
+                                        Id = Convert.ToInt32(reader["OrderId"]),
+                                        ProductName = Convert.ToString(reader["ProductName"]),
+                                        Price = Convert.ToDecimal(reader["Price"])
+                                    };
+
+                                    customer.Orders = new List<Order> { order };
+                                }
                             }
                         }
                     }
                 }
-            }
 
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
             return customer;
         }
 
         public async Task<List<Customer>> Customers()
         {
-            _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
             List<Customer> customers = new List<Customer>();
-            using (SqlConnection connection = new SqlConnection(_sqlConnString))
+            try
             {
-                using (SqlCommand command = new SqlCommand("GetAllCustomers", connection))
+                using (SqlConnection connection = new SqlConnection(_sqlConnString))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-
-                    await connection.OpenAsync();
-
-                    using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                    using (SqlCommand command = new SqlCommand("GetAllCustomers", connection))
                     {
-                        while (await reader.ReadAsync())
-                        {
-                            Customer customer = new Customer
-                            {
-                                Id = Convert.ToInt32(reader["Id"]),
-                                Name = Convert.ToString(reader["Name"])
-                                // Add other properties as needed
-                            };
+                        command.CommandType = CommandType.StoredProcedure;
 
-                            customers.Add(customer);
+                        await connection.OpenAsync();
+
+                        using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                Customer customer = new Customer
+                                {
+                                    Id = Convert.ToInt32(reader["Id"]),
+                                    Name = Convert.ToString(reader["Name"])
+                                    // Add other properties as needed
+                                };
+
+                                customers.Add(customer);
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception)
+            {
+
+                throw;
             }
             return customers;
         }
@@ -94,7 +111,7 @@ namespace UserManagementApi.SQLDbRepo
         public async Task<List<Order>> Orders()
         {
             List<Order> orders = new List<Order>();
-            _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
+          //  _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
 
             using (SqlConnection connection = new SqlConnection(_sqlConnString))
             {
@@ -129,7 +146,7 @@ namespace UserManagementApi.SQLDbRepo
         public async Task<Customer> AddNewCustomer(Customer customer)
         {
             int newCustomerId = 0;
-            _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
+           // _sqlConnString = _configuration.GetConnectionString("UserMgtConn");
 
             using (SqlConnection connection = new SqlConnection(_sqlConnString))
             {
